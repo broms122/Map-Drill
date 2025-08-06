@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<LanguageData>
+
+  <!-- Deep drill -->
+  <TargetMapDrillResource>Targeting: </TargetMapDrillResource>
+  <TargetMapDrillResourceRemaining>Remaining: </TargetMapDrillResourceRemaining>targetResourceRemaining
+  <MapDrillProgress>Progress: </MapDrillProgress>
+  <MapDrillDigProgressString>Dig Progress: </MapDrillDigProgressString>
+  <MapDrillDistanceString>Resource Distance: </MapDrillDistanceString>
+  <MapDrillDistanceRemainingString>Dig Distance: </MapDrillDistanceRemainingString>
+  <MapDrillSteelConsumptionRateString> consumption per hour: </MapDrillSteelConsumptionRateString>
+  <MapDrillStatusActiveManned>Status: Drilling</MapDrillStatusActiveManned>
+  <MapDrillStatusActiveUnmanned>Status: Active (unmanned)</MapDrillStatusActiveUnmanned>
+  <MapDrillStatusActiveStandby>Status: Standby</MapDrillStatusActiveStandby>
+  <MapDrillStatusActiveOffline>Status: Offline</MapDrillStatusActiveOffline>
+  <MapDrillStatusActiveDigging>Status: Digging</MapDrillStatusActiveDigging>
+
+  <command_ActionFindGizmo>Scan Map</command_ActionFindGizmo>
+  <command_ActionFindGizmoDesc>Scan Map for existing underground resource nodes from a ground-penetrating scanner.</command_ActionFindGizmoDesc>
+
+  <command_resetPipelineGizmo>Reset Steel Pipe</command_resetPipelineGizmo>
+  <command_resetPipelineGizmoDesc>This resets the "drilling from last location to the drill itself, useful if you need to start digging to something closer to the drill than the last place you drilled from. The distance is calculated the last cell you dug, represented by the blue line and small blue circle.</command_resetPipelineGizmoDesc>
+
+  
+  <CommandSelectMineralToDrillFor>Drilling for</CommandSelectMineralToDrillFor>
+  <CommandSelectMineralToDrillForDesc>Select the mineral type to drill for.</CommandSelectMineralToDrillForDesc>
+
+
+  <DeepDrillNoResources>No resources below.</DeepDrillNoResources>
+  <DeepDrillExhausted>Deep drill resources exhausted, drill automatically forbidden. Unforbid to begin mining of {0}.</DeepDrillExhausted>
+  <DeepDrillExhaustedNoFallback>Deep drill resources exhausted.</DeepDrillExhaustedNoFallback>
+</LanguageData>

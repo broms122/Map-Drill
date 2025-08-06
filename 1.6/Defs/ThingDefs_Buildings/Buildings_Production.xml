@@ -1,0 +1,179 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<Defs>
+
+
+  <ThingDef ParentName="BuildingBase">
+    <defName>MapDrill</defName>
+    <label>Remote Drilling Machine</label>
+    <description>A deep-crust drilling rig for extracting minerals from deep under the surface. Use a ground-penetrating scanner to detect the resources. This drill will yield stone chunks if no resources are present. Can be repositioned freely.</description>
+    <!--<thingclass>MapDrill.Building_MapDrill</thingclass> WIP -->
+    <graphicData>
+      <graphicClass>Graphic_Single</graphicClass>
+      <texPath>Things/Building/Production/RemoteDrill/remote_drill_idle</texPath>
+      <drawSize>(3.5,3.5)</drawSize>
+      <drawRotated>false</drawRotated>
+      <shadowData>
+        <volume>(0.52, 0.53, 0.09)</volume>
+        <offset>(0,0,-0.43)</offset>
+      </shadowData>
+    </graphicData>
+    <size>(3,3)</size>
+    <tickerType>Normal</tickerType>
+    <altitudeLayer>Building</altitudeLayer>
+    <passability>PassThroughOnly</passability>
+    <pathCost>50</pathCost>
+    <fillPercent>0.5</fillPercent>
+    <hasInteractionCell>true</hasInteractionCell>
+    <interactionCellOffset>(0,0,-2)</interactionCellOffset>
+    <designationCategory>Production</designationCategory>
+    <designationHotKey>Misc12</designationHotKey>
+    <!--<specialDisplayRadius>120</specialDisplayRadius>  21 closest cells, must be in sync with CompDeepDrill was 2.6 -->
+    <rotatable>true</rotatable>
+    <terrainAffordanceNeeded>Light</terrainAffordanceNeeded>
+    <constructionSkillPrerequisite>4</constructionSkillPrerequisite>
+    <uiIconOffset>(0, 0.03)</uiIconOffset>
+    <uiIconScale>0.85</uiIconScale>
+    <minifiedDef>MinifiedThing</minifiedDef>
+    <building>
+      <uninstallWork>1800</uninstallWork>
+      <buildingTags>
+        <li>Production</li>
+      </buildingTags>
+      <destroySound>BuildingDestroyed_Metal_Small</destroySound>
+    </building>
+    <thingCategories>
+      <li>BuildingsProduction</li>
+    </thingCategories>
+    <costList>
+      <Steel>100</Steel>
+      <ComponentIndustrial>2</ComponentIndustrial>
+    </costList>
+    <placeWorkers>
+      <li>PlaceWorker_DeepDrill</li>
+      <li>PlaceWorker_PreventInteractionSpotOverlap</li>
+      <li>PlaceWorker_InvalidOverSubstructure</li>
+    </placeWorkers>
+    <drawPlaceWorkersWhileSelected>true</drawPlaceWorkersWhileSelected>
+    <researchPrerequisites>
+      <li>DeepDrilling</li>
+    </researchPrerequisites>
+    <statBases>
+      <MaxHitPoints>300</MaxHitPoints>
+      <WorkToBuild>10000</WorkToBuild>
+      <Flammability>0.5</Flammability>
+      <Beauty>-25</Beauty>
+      <Mass>35</Mass>
+    </statBases>
+    <comps>
+      <li Class="CompProperties_Forbiddable"/>
+      <li Class="CompProperties_Flickable"/>
+      <li Class="CompProperties_Power">
+        <compClass>CompPowerTrader</compClass>
+        <basePowerConsumption>200</basePowerConsumption>
+      </li>
+      <li Class="MapDrill.CompProperties_MapDrill">
+        <drillAutoModeYield>1</drillAutoModeYield> <!-- equiv to lvl 10 miner -->
+        <drillAutoModeSpeed>1</drillAutoModeSpeed> <!-- equiv to lvl 10 miner -->
+        <soundDefSustainer>Interact_Drill</soundDefSustainer>
+        <effecterDefForAutoMode>Drill</effecterDefForAutoMode>
+        <slagChunkEveryNumSteelConsumed>30</slagChunkEveryNumSteelConsumed>
+      </li>
+      <li Class="CompProperties_CreatesInfestations" />
+      <li Class="MapDrill.CompProperties_Refuelable_MapDrill"><!--MapDrill.CompProperties_Refuelable_MapDrill-->
+        <fuelConsumptionRate>1200</fuelConsumptionRate> <!-- per day -->
+        <targetFuelLevelConfigurable>true</targetFuelLevelConfigurable>
+        <minimumFueledThreshold>1</minimumFueledThreshold>
+        <initialConfigurableTargetFuelLevel>100</initialConfigurableTargetFuelLevel>
+        <fuelCapacity>200.0</fuelCapacity>
+        <fuelFilter>
+          <thingDefs>
+            <li>Steel</li>
+          </thingDefs>
+        </fuelFilter>
+        <fuelLabel>Steel</fuelLabel>
+        <fuelGizmoLabel>Steel</fuelGizmoLabel>
+        <consumeFuelOnlyWhenUsed>true</consumeFuelOnlyWhenUsed>
+        <showAllowAutoRefuelToggle>true</showAllowAutoRefuelToggle>
+        <canEjectFuel>true</canEjectFuel>
+        <autoRefuelPercent>1</autoRefuelPercent>
+        <showFuelGizmo>true</showFuelGizmo>
+        <drawOutOfFuelOverlay>false</drawOutOfFuelOverlay>
+
+
+        
+      </li>
+    </comps>
+  </ThingDef>
+
+  <JobDef>
+    <defName>OperateMapDrill</defName>
+    <driverClass>MapDrill.JobDriver_OperateMapDrill</driverClass>
+    <reportString>drilling at TargetA.</reportString>
+    <allowOpportunisticPrefix>true</allowOpportunisticPrefix>
+  </JobDef>
+  
+  <JobDef>
+    <defName>Refuel_MapDrill</defName>
+    <driverClass>MapDrill.JobDriver_Refuel_MapDrill</driverClass>
+    <reportString>refueling TargetA.</reportString>
+    <suspendable>false</suspendable>
+    <allowOpportunisticPrefix>true</allowOpportunisticPrefix>
+  </JobDef>
+  
+  <JobDef>
+    <defName>Refuel_MapDrillAtomic</defName>
+    <driverClass>MapDrill.JobDriver_Refuel_MapDrillAtomic</driverClass>
+    <reportString>refueling TargetA.</reportString>
+    <suspendable>false</suspendable>
+    <allowOpportunisticPrefix>true</allowOpportunisticPrefix>
+  </JobDef>
+
+  <JobDef>
+    <defName>EjectFuel_MapDrill</defName>
+    <driverClass>MapDrill.JobDriver_EjectFuel_MapDrill</driverClass>
+    <reportString>Ejecting fuel from TargetA.</reportString>
+    <allowOpportunisticPrefix>true</allowOpportunisticPrefix>
+  </JobDef>
+
+  <WorkGiverDef>
+    <defName>EjectFuel_MapDrill</defName>
+    <label>eject fuel</label>
+    <giverClass>MapDrill.WorkGiver_EjectFuel_MapDrill</giverClass>
+    <workType>BasicWorker</workType>
+    <verb>eject fuel</verb>
+    <gerund>ejecting fuel from</gerund>
+    <priorityInType>50</priorityInType>
+    <requiredCapacities>
+      <li>Manipulation</li>
+    </requiredCapacities>
+  </WorkGiverDef>
+
+  <WorkGiverDef>
+    <defName>MapDrill</defName>
+    <label>drill at map drill</label>
+    <giverClass>MapDrill.WorkGiver_MapDrill</giverClass>
+    <workType>Mining</workType>
+    <priorityInType>50</priorityInType>
+    <verb>drill</verb>
+    <gerund>drilling</gerund>
+    <requiredCapacities>
+      <li>Manipulation</li>
+    </requiredCapacities>
+    <canBeDoneByMechs>false</canBeDoneByMechs>
+  </WorkGiverDef>
+  
+  <WorkGiverDef>
+    <defName>Refuel_MapDrill</defName>
+    <label>refuel buildings</label>
+    <giverClass>MapDrill.WorkGiver_Refuel_MapDrill</giverClass>
+    <workType>Hauling</workType>
+    <verb>refuel</verb>
+    <gerund>refueling</gerund>
+    <priorityInType>140</priorityInType>
+    <requiredCapacities>
+      <li>Manipulation</li>
+    </requiredCapacities>
+    <prioritizeSustains>true</prioritizeSustains>
+  </WorkGiverDef>
+
+</Defs>

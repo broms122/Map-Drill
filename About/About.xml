@@ -1,0 +1,19 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<ModMetaData>
+	<name>Map Drill</name>
+	<author>Broms</author>
+	<packageId>Broms.MapDrill</packageId>
+	<supportedVersions>
+		<li>1.6</li>
+	</supportedVersions>
+  <modDependencies>
+    <li>
+      <packageId>Ludeon.RimWorld</packageId>
+      <displayName>Core</displayName>
+    </li>
+  </modDependencies>
+	<description>Example Mod Template Description</description>
+  <loadAfter>
+    <li>Ludeon.RimWorld</li>
+  </loadAfter>
+</ModMetaData>

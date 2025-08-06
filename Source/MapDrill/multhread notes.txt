@@ -1,0 +1,78 @@
+using RimWorld;
+using Verse;
+using System.Threading;
+using System.Collections.Generic;
+
+public class MapSearchWorker
+{
+    private Map map;
+    private ThingDef targetThingDef;
+    private List<IntVec3> foundCells = new List<IntVec3>();
+    private int processedCells = 0;
+    private int totalCells;
+    private ManualResetEvent allTasksComplete = new ManualResetEvent(false);
+
+    public MapSearchWorker(Map map, ThingDef targetThingDef)
+    {
+        this.map = map;
+        this.targetThingDef = targetThingDef;
+        this.totalCells = map.Size.x * map.Size.z;
+    }
+
+    public List<IntVec3> SearchMap()
+    {
+        // Divide the map into smaller regions for parallel processing
+        int chunkSize = 1000; // Adjust as needed
+        for (int i = 0; i < totalCells; i += chunkSize)
+        {
+            int start = i;
+            int end = Math.Min(i + chunkSize, totalCells);
+            ThreadPool.QueueUserWorkItem(ProcessRegion, new CellRange(start, end));
+        }
+
+        allTasksComplete.WaitOne(); // Wait for all tasks to finish
+        return foundCells;
+    }
+
+    private void ProcessRegion(object state)
+    {
+        CellRange range = (CellRange)state;
+        for (int i = range.Start; i < range.End; i++)
+        {
+            IntVec3 cell = map.CellsInRandomOrder().ElementAt(i); 
+
+            // Check for target ThingDef in the current cell
+            foreach (Thing thing in map.thingGrid.ThingsAt(cell))
+            {
+                if (thing.def == targetThingDef)
+                {
+                    lock (foundCells) // Protect access to shared resource
+                    {
+                        foundCells.Add(cell);
+                    }
+                    break;
+                }
+            }
+
+            Interlocked.Increment(ref processedCells);
+        }
+
+        // Signal when all tasks are complete
+        if (Interlocked.CompareExchange(ref processedCells, totalCells, totalCells) == totalCells)
+        {
+            allTasksComplete.Set();
+        }
+    }
+}
+
+public struct CellRange
+{
+    public int Start;
+    public int End;
+
+    public CellRange(int start, int end)
+    {
+        Start = start;
+        End = end;
+    }
+}

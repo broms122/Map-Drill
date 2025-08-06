@@ -1,0 +1,46 @@
+for (int i = 0; i < map.info.NumCells; i++)
+{
+    // Get the DeepResourceGrid cell data for the current index
+    ThingDef resourceDef = deepResourceGrid.ThingDefAt(i); 
+
+    if (resourceDef != null)
+    {
+        // A deep resource exists at this cell. 
+        // You can check its definition and perform actions based on it.
+        // Example:  
+        if (resourceDef == ThingDefOf.Gold) // Check for gold resources
+        {
+            // Do something when gold is found at this cell
+        }
+    }
+}
+
+Specific Cell Search (Optional): If the coordinates (or Cell Index) of a specific location are known, you can directly query the DeepResourceGrid at that location.
+csharp
+IntVec3 targetCell = new IntVec3(x, y, z); // Replace x, y, z with desired coordinates
+ThingDef resourceAtCell = deepResourceGrid.ThingDefAt(map.cellIndices.CellToIndex(targetCell)); 
+if (resourceAtCell != null)
+{
+    // Resource found at targetCell
+}
+
+
+
+Known resources exhaused: Steel. Scan for more and update automatic drill's map by selecting steel. 
+something along those lines. 
+Broms — 1:12 PM
+yeah I could also do an icon over the miner, like of like the out of fuel thing
+
+And maybe make it also drop resource selection when it goes idle due to no more pockets
+so player has to reselect after scanning more pockets\
+
+
+
+
+TO DO before concert:
+
+reset targetcell function gizmo
+
+look into how to multithread the map checker.
+
+look into custom dictionary with a built in sorting method
