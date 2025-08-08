@@ -60,11 +60,14 @@
     <Content Include="Backup_JobDriver_OperateMapDrill.txt" />
     <Compile Include="Building_MapDrill.cs" />
     <Compile Include="Command_SetTargetFuelLevel_MapDrill.cs" />
+    <Compile Include="CompDeepScanner_MapDrillGizmo.cs" />
     <Compile Include="CompDrill_MapDrill.cs" />
+    <Compile Include="CompProperties_DeepScanner_MapDrillGizmo.cs" />
     <Compile Include="CompRefuelable_MapDrill.cs" />
     <Compile Include="CompProperties_MapDrill.cs" />
     <Compile Include="Designator_EjectFuel_MapDrill.cs" />
     <Compile Include="Gizmo_SetFuelLevel_MapDrill.cs" />
+    <Compile Include="HarmonyInit.cs" />
     <Compile Include="HarmonyPatch.cs" />
     <Compile Include="JobDriver_EjectFuel_MapDrill.cs" />
     <Compile Include="JobDriver_OperateMapDrill.cs" />

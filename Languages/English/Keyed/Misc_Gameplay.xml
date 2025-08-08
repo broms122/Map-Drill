@@ -15,6 +15,9 @@
   <MapDrillStatusActiveOffline>Status: Offline</MapDrillStatusActiveOffline>
   <MapDrillStatusActiveDigging>Status: Digging</MapDrillStatusActiveDigging>
 
+  <command_resetAllDictionary>Reset Dictionaries</command_resetAllDictionary>
+  <command_resetAllDictionaryDesc>Clears the Outer and Inner resource dictionaries.</command_resetAllDictionaryDesc>
+
   <command_ActionFindGizmo>Scan Map</command_ActionFindGizmo>
   <command_ActionFindGizmoDesc>Scan Map for existing underground resource nodes from a ground-penetrating scanner.</command_ActionFindGizmoDesc>
 

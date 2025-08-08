@@ -12,6 +12,7 @@ using RimWorld.QuestGen;
 using Unity.Collections;
 using Unity.IO.LowLevel.Unsafe;
 using UnityEngine;
+using UnityEngine.Assertions.Must;
 using Verse;
 using Verse.AI;
 using Verse.Noise;
@@ -62,12 +63,17 @@ namespace MapDrill
         public WorkGiverDef mapDrillWorkGiverDef = DefDatabase<WorkGiverDef>.GetNamed("MapDrill");
         private Effecter effecter;
         private int tickCount;
+        private int localMapDictionaryCount = 0;
+        private bool canDrill = true;
 
         //public NativeArray Result;
 
 
-        public static Dictionary<Map, Dictionary<IntVec3, ThingDef>> MapDictionaryOuterDictionary = new Dictionary<Map, Dictionary<IntVec3, ThingDef>>();
-        public static Dictionary<IntVec3, ThingDef> IntVec3ResourceInnerDictionary = new Dictionary<IntVec3, ThingDef>();
+        public static Dictionary<Map, Dictionary<IntVec3, ThingDef>> OuterDictionaryMapIntVec3 = new Dictionary<Map, Dictionary<IntVec3, ThingDef>>();
+        private Dictionary<IntVec3, ThingDef> InnerDictionaryIntVec3ThingDef = new Dictionary<IntVec3, ThingDef>();
+        private Dictionary<IntVec3, int> InnerDictionaryIntVec3Int = new Dictionary<IntVec3, int>();
+
+
         private Dictionary<int, string> drillStatusDictionary = new Dictionary<int, string>()
         {
             {1, "MapDrillStatusActiveManned" },
@@ -116,6 +122,7 @@ namespace MapDrill
             SetDefaultTargetMineral();
             lastCell = (lastCell == IntVec3.Invalid ? parent.Position : lastCell);
             activeDrillCell = (activeDrillCell == IntVec3.Invalid ? parent.Position : activeDrillCell);
+            //OuterDictionaryMapIntVec3 = (OuterDictionaryMapIntVec3 == null) ? new Dictionary<Map, Dictionary<IntVec3, ThingDef>>() : OuterDictionaryMapIntVec3;
         }//leave as is
 
         public override void PostExposeData()
@@ -134,7 +141,9 @@ namespace MapDrill
             Scribe_Values.Look(ref drillAutoMode, "drillAutoMode", true);
             Scribe_Values.Look(ref steelConsumed, "steelConsumed", 0);
             Scribe_Values.Look(ref isPawnWorking, "isPawnWorking", true);
-            Scribe_Values.Look(ref tickCount, "tickCount", 0); 
+            Scribe_Values.Look(ref tickCount, "tickCount", 0);
+            Scribe_Values.Look(ref localMapDictionaryCount, "localMapDictionaryCount", 0);
+            Scribe_Values.Look(ref canDrill, "canDrill", true); 
 
 
             Scribe_Defs.Look(ref TargetDrillingDef, "TargetDrillingDef");
@@ -142,13 +151,40 @@ namespace MapDrill
             Scribe_Values.Look(ref TargetDrillingCountRemaining, "TargetDrillingCountRemaining");
             Scribe_Defs.Look(ref gizmoTargetResource, "gizmoTargetResource");
 
-            Scribe_Collections.Look(ref MapDictionaryOuterDictionary, "MapDictionaryOuterDictionary", LookMode.Value, LookMode.Deep);
-            Scribe_Collections.Look(ref IntVec3ResourceInnerDictionary, "IntVec3ResourceInnerDictionary", LookMode.Value, LookMode.Def);
+            Scribe_Collections.Look(ref OuterDictionaryMapIntVec3, "OuterDictionaryMapIntVec3", LookMode.Value, LookMode.Deep);
+            Scribe_Collections.Look(ref InnerDictionaryIntVec3ThingDef, "InnerDictionaryIntVec3ThingDef", LookMode.Value, LookMode.Def);
+            Scribe_Collections.Look(ref InnerDictionaryIntVec3Int, "InnerDictionaryIntVec3Int", LookMode.Value, LookMode.Value);
 
             if (Scribe.mode == LoadSaveMode.PostLoadInit && gizmoTargetResource == null)
             {
                 SetDefaultTargetMineral();
             }
+        }
+
+        private void ShowAllVariables()
+        {
+            Log.Message($"distanceToCell\t\t= {distanceToCell}");
+            Log.Message($"distanceToDig\t\t= {distanceToDig}");
+            Log.Message($"distanceCellsDug\t\t= {distanceCellsDug}");
+            Log.Message($"lastCell\t\t= {lastCell}");
+            Log.Message($"gizmoTargetResource\t\t= {gizmoTargetResource}");
+            Log.Message($"TargetDrillingDef\t\t= {TargetDrillingDef}");
+            Log.Message($"TargetDrillingCell\t\t= {TargetDrillingCell}");
+            Log.Message($"activeDrillCell\t\t= {activeDrillCell}");
+            Log.Message($"TargetDrillingCountRemaining\t\t= {TargetDrillingCountRemaining}");
+            Log.Message($"drillStatus\t\t= {drillStatus}");
+            Log.Message($"portionProgress\t\t= {portionProgress}");
+            Log.Message($"portionYieldPct\t\t= {portionYieldPct}");
+            Log.Message($"digProgress\t\t= {digProgress}");
+            Log.Message($"digOrDrill\t\t= {digOrDrill}");
+            Log.Message($"drillAutoMode\t\t= {drillAutoMode}");
+            Log.Message($"steelConsumed\t\t= {steelConsumed}");
+            Log.Message($"isPawnWorking\t\t= {isPawnWorking}");
+            Log.Message($"tickCount\t\t= {tickCount}");
+            Log.Message($"localMapDictionaryCount\t\t= {localMapDictionaryCount}");
+            Log.Message($"canDrill\t\t= {canDrill}");
+            Log.Message("----------------------------------------");
+            DisplayDeepResourceDictionary();
         }
 
         private void SetDefaultTargetMineral()
@@ -171,13 +207,29 @@ namespace MapDrill
             lastCell = parent.Position;
             TargetDrillingCell = parent.Position;
             activeDrillCell = parent.Position;
+            InnerDictionaryIntVec3Int.Clear();
+            InnerDictionaryIntVec3ThingDef.Clear();
             ShutDownEffects();
         }
 
-        public void UpdateDeepResourceDictionary()// Finds location of desired resources
+        public void ClearResourceDictionaries()
+        {
+            OuterDictionaryMapIntVec3.Clear();
+            InnerDictionaryIntVec3Int.Clear();
+            InnerDictionaryIntVec3ThingDef.Clear();
+
+            //TODO update this to interate through all instances of InnerDictionaries
+            Log.Message("~~~~~~~~\t\tAll dictionaries cleared.\t\t~~~~~~~~");
+        }
+
+        public void ScanCurrentMapForUndergroundResources()// Finds location of desired resources manually via gizmo
         {
 
-            IntVec3ResourceInnerDictionary.Clear();
+            if (OuterDictionaryMapIntVec3.ContainsKey(parent.Map))
+            {
+                OuterDictionaryMapIntVec3[parent.Map].Clear();
+            }
+
             DeepResourceGrid deepResourceGrid = parent.Map.deepResourceGrid;
 
             //Log.Message(parent.Map.info.Size); // returns 250,1,250... scan x 0 to 250, and z 0 to 250
@@ -192,9 +244,9 @@ namespace MapDrill
 
             //Log.Message("GIZMO - Creating Dictonary");
 
-            if (!MapDictionaryOuterDictionary.ContainsKey(parent.Map))
+            if (!OuterDictionaryMapIntVec3.ContainsKey(parent.Map))
             {
-                MapDictionaryOuterDictionary.Add(parent.Map, IntVec3ResourceInnerDictionary);
+                OuterDictionaryMapIntVec3.Add(parent.Map, new Dictionary<IntVec3, ThingDef>());
             }
 
             for (int i = 0; i < mapX; i++)
@@ -205,42 +257,83 @@ namespace MapDrill
                         if ((deepResourceGrid.ThingDefAt(temp) == gizmoTargetResource.building.mineableThing))
                         {
 
-                            IntVec3ResourceInnerDictionary.Add(temp, gizmoTargetResource.building.mineableThing);
+                        OuterDictionaryMapIntVec3[parent.Map].Add(temp, gizmoTargetResource.building.mineableThing);
                             //Log.Message($"deepResourceGrid.ThingDefAt(temp) = {deepResourceGrid.ThingDefAt(temp)} @ ({i},1,{j})");
                         }
                     }
                 }
 
             //Log.Message("GIZMO - Dictonary Complete");
-            UpdateInstanceTargets();
-            //UpdateDigDistance();
-            //Key is IntVec3, Value is ThingDef
 
+
+            //UpdateInstanceTargets();  commented out 8/7/25 .. this needs to be automated later
         }
 
-        private void UpdateInstanceTargets() //debug gizmo for now, should be called automatically later if the dictionary has values
+        public static void UpdateMapResourceDictionaries(ThingDef thingdef, Map map, IntVec3 intvec3)
         {
-            //Key is IntVec3, Value is ThingDef
-            if (IntVec3ResourceInnerDictionary.Count == 0)
+            Log.Message($"map = {map}");
+
+
+            if (!OuterDictionaryMapIntVec3.ContainsKey(map))
             {
-                Log.Message("Dictionary Empty in UpdateInstanceTargets");
+                OuterDictionaryMapIntVec3.Add(map, new Dictionary<IntVec3, ThingDef>());
+            }
+
+            OuterDictionaryMapIntVec3[map].Add(intvec3, thingdef);
+            Log.Message($"Map:\t{map}\t\tIntVec3\tx:\t{intvec3.x}\ty:\t{intvec3.y}\tz:\t{intvec3.z}\t\tThingDef:\t{thingdef}");
+        }
+
+        private void CreateLocalDictionaries()
+        {
+            InnerDictionaryIntVec3Int.Clear();
+            InnerDictionaryIntVec3ThingDef.Clear();
+            SortedDictionary<IntVec3, int> tempSortedDictionary = new SortedDictionary<IntVec3, int>();
+
+            //Log.Message($"!!!!!!!");
+            foreach (var intVec3ThingDefdictionary in OuterDictionaryMapIntVec3[parent.Map])
+            {
+                //Log.Message($"######");
+                if (intVec3ThingDefdictionary.Value == gizmoTargetResource.building.mineableThing)
+                {
+
+                    //Log.Message($"@@@@@@");
+                    InnerDictionaryIntVec3ThingDef.Add(intVec3ThingDefdictionary.Key, intVec3ThingDefdictionary.Value);
+                    InnerDictionaryIntVec3Int.Add(intVec3ThingDefdictionary.Key, Math.Abs((int)Vector3.Distance(ConvertIntVec3ToVector3(parent.Position), ConvertIntVec3ToVector3(intVec3ThingDefdictionary.Key))));
+                    //tempSortedDictionary.Add(intVec3ThingDefdictionary.Key, Math.Abs((int)Vector3.Distance(ConvertIntVec3ToVector3(parent.Position), ConvertIntVec3ToVector3(intVec3ThingDefdictionary.Key))));
+                }
+                else
+                {
+                    Log.Message($"{intVec3ThingDefdictionary.Value} is a thingdef mismatch, not added to dictionary");
+                }
+            }
+            InnerDictionaryIntVec3Int.OrderBy(x => x.Value);
+/*            foreach (var x  in InnerDictionaryIntVec3Int)
+            {
+                Log.Message($"int = {x.Value}");    
+            }*/
+            //InnerDictionaryIntVec3Int = tempSortedDictionary.ToDictionary(x => x.Key, x => x.Value);
+            //Log.Message("Created local dictionaries");
+        }
+
+        private void ShutDownDrill()
+        {
+            // 1 = Active (Drilling), 2 = tbd, 3 = Standby, 4 = Offline, 5 = Digging
+            ShutDownEffects();
+
+            if (!powerComp.PowerOn || !flickComp.SwitchIsOn || !refuelableComp.HasFuel) // turn it off
+            {
+                drillStatus = 4;
                 return;
             }
 
-            TargetDrillingCell = MapDictionaryOuterDictionary[parent.Map].First().Key;
-            TargetDrillingDef = MapDictionaryOuterDictionary[parent.Map].First().Value;
+            if (localMapDictionaryCount == 0) // powered but idle conditions
+            {
+                drillStatus = 3;
+                return;
+            }
 
-
-            //TargetDrillingCell = IntVec3ResourceInnerDictionary.First().Key;
-            //TargetDrillingDef = IntVec3ResourceInnerDictionary.First().Value;
-            UpdateTargetDrillingCountRemaining();
-            distanceToCell = (int)Vector3.Distance(ConvertIntVec3ToVector3(parent.Position), ConvertIntVec3ToVector3(TargetDrillingCell));
-
-            UpdateLastCell(); // it was here 10:15am 8/5/25
-
-            //Log.Message($"TargetDrillingDef = {TargetDrillingDef}\tTargetDrillingCell = {TargetDrillingCell}");
         }
-
+        
         private void UpdateLastCell(bool done = false)
         {
             if (lastCell == IntVec3.Zero)
@@ -255,62 +348,66 @@ namespace MapDrill
 
         private void RemoveDeepResourceFromDictionary(IntVec3 cellToRemove)
         {
-            //Log.Message($"Removing {IntVec3ResourceInnerDictionary[cellToRemove]} @ {cellToRemove} from the Dictionary");
-            IntVec3ResourceInnerDictionary.Remove(cellToRemove);
-            distanceCellsDug = 0;
+            if (parent.Map.deepResourceGrid.CountAt(TargetDrillingCell) > 0) 
+            {
+                Log.Message("No need to remove cell from dicionary - RemoveDeepResourceFromDictionary");
+                return; 
+            }
+
+            if (OuterDictionaryMapIntVec3[parent.Map].ContainsKey(cellToRemove))
+            {
+                OuterDictionaryMapIntVec3[parent.Map].Remove(cellToRemove);
+                distanceCellsDug = 0;
+            }
+
+            if (InnerDictionaryIntVec3ThingDef.ContainsKey(cellToRemove))
+            {
+                InnerDictionaryIntVec3ThingDef.Remove(cellToRemove);
+            }
+
+            if (InnerDictionaryIntVec3Int.ContainsKey(cellToRemove))
+            {
+                InnerDictionaryIntVec3Int.Remove(cellToRemove);
+            }
+
+            //else { Log.Message("Somehow you tried to remove a cell that shouldn't exist @@@@@@@@@@@@ - RemoveDeepResourceFromDictionary"); }
         }
 
         private void DisplayDeepResourceDictionary()
         {
-            foreach (var item in MapDictionaryOuterDictionary)
+            int i1 = 0;
+            int i2 = 1;
+            int i3 = 1;
+            foreach (var item in OuterDictionaryMapIntVec3)
             {
-                Log.Message($"Dictionary (MapDictionaryOuterDictionary): {MapDictionaryOuterDictionary}\tKey: {item.Key}\t Value: {item.Value}");
+                Log.Message($"Outer {i1}:\t\tMap: {item.Key}\tDictionary: {item.Value}");
+                i1++;
             }
 
-            foreach (var item in IntVec3ResourceInnerDictionary)
+            foreach (var item in InnerDictionaryIntVec3ThingDef)
             {
-                Log.Message($"Dictionary (IntVec3ResourceInnerDictionary): {IntVec3ResourceInnerDictionary}\tKey: {item.Key}\t Value: {item.Value}");
+                Log.Message($"InnerDictionaryIntVec3ThingDef {i2}:\t\tIntVec3: {item.Key}\tDef: {item.Value}");
+                i2++;
             }
 
-            if (IntVec3ResourceInnerDictionary.Count == 0)
+            foreach (var item in InnerDictionaryIntVec3Int)
             {
-                Log.Message("Dictionary is Empty");
+                Log.Message($"InnerDictionaryIntVec3Int {i3}:\t\tIntVec3: {item.Key}\tInt: {item.Value}");
+                i3++;
             }
-        }
-
-        private void ShowAllVariables()
-        {
-            Log.Message($"distanceToCell\t\t= {distanceToCell}");
-            Log.Message($"distanceToDig\t\t= {distanceToDig}");
-            Log.Message($"distanceCellsDug\t\t= {distanceCellsDug}");
-            Log.Message($"lastCell\t\t= {lastCell}");
-            Log.Message($"gizmoTargetResource\t\t= {gizmoTargetResource}");
-            Log.Message($"TargetDrillingDef\t\t= {TargetDrillingDef}");
-            Log.Message($"TargetDrillingCell\t\t= {TargetDrillingCell}");
-            Log.Message($"activeDrillCell\t\t= {activeDrillCell}"); 
-            Log.Message($"TargetDrillingCountRemaining\t\t= {TargetDrillingCountRemaining}");
-            Log.Message($"drillStatus\t\t= {drillStatus}");
-            Log.Message($"portionProgress\t\t= {portionProgress}");
-            Log.Message($"portionYieldPct\t\t= {portionYieldPct}");
-            Log.Message($"digProgress\t\t= {digProgress}");
-            Log.Message($"digOrDrill\t\t= {digOrDrill}");
-            Log.Message($"drillAutoMode\t\t= {drillAutoMode}");
-            Log.Message($"steelConsumed\t\t= {steelConsumed}");
-            Log.Message($"isPawnWorking\t\t= {isPawnWorking}");
-            Log.Message($"tickCount\t\t= {tickCount}"); 
-            Log.Message("----------------------------------------");
-            DisplayDeepResourceDictionary();
         }
 
         private void UpdateTargetDrillingCountRemaining()
         {
             var temp = parent.Map.deepResourceGrid.CountAt(TargetDrillingCell);
-            if (temp <= 0)
+            if (temp <= 0 || TargetDrillingCell == IntVec3.Zero)
             {
                 TargetDrillingCountRemaining = 0;
+                Log.Message("DEBUG UpdateTargetDrillCountRemaining");
             }
             else
             {
+                Log.Message("DEBUG UpdateTargetDrillCountRemaining2");
                 TargetDrillingCountRemaining = temp;
             }
         }
@@ -335,17 +432,11 @@ namespace MapDrill
             }
         }
 
-        private void ThreadTest()
-        {
-
-        }
-
-
         public bool CanDrillNow() // this checks if we can even do any drilling
 
         {
+            canDrill = true;  // remove this later probably
 
-            //Key is IntVec3, Value is ThingDef
             /*
             { 1, "MapDrillStatusActiveManned" },
             { 2, "MapDrillStatusActiveUnmanned" }, // to be implemented
@@ -353,42 +444,42 @@ namespace MapDrill
             { 4, "MapDrillStatusActiveOffline" },
             { 5, "MapDrillStatusActiveDigging" },
             */
-            UpdateInstanceTargets();
 
-            if (!powerComp.PowerOn || !flickComp.SwitchIsOn) // false check
+            if (!refuelableComp.HasFuel || !powerComp.PowerOn || !flickComp.SwitchIsOn) // could but won't run, shut it down
             {
-                drillStatus = 4;
-                //Log.Message("Error 1");
-                ShutDownEffects();
-                return false;
-            } 
-
-            if (!refuelableComp.HasFuel || IntVec3ResourceInnerDictionary.Count == 0) // fuel isn't ready or there isn't anything to mine in the list
-            {
-                //Log.Message($"refuelableComp.Fuel = {refuelableComp.Fuel}\tdeepResourceDictionary.Count = {IntVec3ResourceInnerDictionary.Count}");
-                //Log.Message("Error 2");
-                ShutDownEffects();
-                return false;
+                Log.Message("DEBUG OPTION 1!! I added this 8/7/25 @ 5:08pm...");
+                ShutDownDrill(); // results in offline (4) or standby (3) drillStatus
+                return canDrill = false;
             }
 
-            if (IntVec3ResourceInnerDictionary.Count > 0 && drillStatus == 3) // there's stuff to mine and I'm on standby
+            if (localMapDictionaryCount == 0 || !OuterDictionaryMapIntVec3.ContainsKey(parent.Map)) // nothing to drill. go home
             {
-                if (TargetDrillingCountRemaining == 0) {
-                    //Log.Message("Error 3.0");
-                    RemoveDeepResourceFromDictionary(TargetDrillingCell);
-                    //sustainer.End();
-                    return false;
-                }; // gets a new target if needed when ready to dig/drill
-
-
-                //Log.Message("Error 3");
+                ShutDownDrill();
+                return canDrill = false;
             }
-                    
+
+            if (OuterDictionaryMapIntVec3[parent.Map].ContainsValue(gizmoTargetResource.building.mineableThing) && !InnerDictionaryIntVec3ThingDef.ContainsValue(gizmoTargetResource.building.mineableThing)) // skip creation of dictionary if it isn't needed.
+            {
+                    CreateLocalDictionaries(); // makes local dictionaries targeting gizmoTargetResource from the outerdictionary
+                return canDrill = false;
+            }
+
+
+            if (InnerDictionaryIntVec3ThingDef.Count == 0)
+            {
+                ShutDownDrill();
+                return canDrill = false;
+            }
+
+            TargetDrillingCell = InnerDictionaryIntVec3Int.FirstOrDefault().Key;
+            TargetDrillingDef = gizmoTargetResource.building.mineableThing;
+            distanceToCell = InnerDictionaryIntVec3Int.FirstOrDefault().Value;
+            UpdateLastCell();
+
             if (distanceToDig == 0) // can I dig or drill now?
             {
                 digOrDrill = 1; // distance is 0, DRILL
                 drillStatus = 1;
-                //Log.Message("@@@@@@@@@@@@@@@@@ DEBUG 1 @@@@@@@@@@@@@@@");
             }
             else
             {
@@ -396,18 +487,26 @@ namespace MapDrill
                 drillStatus = 5;
             }
 
-            //Log.Message("Error 5");
-                        return true;
+            return canDrill = true;
+
         }
 
         public override void CompTickRare() 
         {
-            //Log.Message("rare tick!");
+            if (OuterDictionaryMapIntVec3.ContainsKey(parent.Map))
+            {
+                localMapDictionaryCount = (OuterDictionaryMapIntVec3.ContainsKey(parent.Map)) ? OuterDictionaryMapIntVec3[parent.Map].Count : 0;
+            } 
 
-            //Log.Message($"!powerComp.PowerOn = {!powerComp.PowerOn}\t!flickComp.SwitchIsOn = {!flickComp.SwitchIsOn}");
             if (!powerComp.PowerOn || !flickComp.SwitchIsOn)
             {
-                ShutDownEffects();
+                ShutDownDrill(); // no power, shut it down
+                return;
+            }
+
+            if (!CanDrillNow()) // checks for fuel, dictionary targets or in standby, if there are no resource remaining at target cell, remove from dictionary
+            {
+                ShutDownDrill();
                 return;
             }
 
@@ -419,9 +518,8 @@ namespace MapDrill
                     sustainer.End();
                 }
                 return;
-            }
-
-            if (CanDrillNow() & !isPawnWorking) 
+            } 
+            if (!isPawnWorking && powerComp.PowerOn && flickComp.SwitchIsOn && refuelableComp.HasFuel && (drillStatus == 3 || drillStatus == 4))
             {
                 if (sustainer == null || sustainer.Ended)
                 {
@@ -442,9 +540,23 @@ namespace MapDrill
                 tickCount = 0;
                 return;
             }
-            
 
-            if (!isPawnWorking && powerComp.PowerOn && flickComp.SwitchIsOn)
+
+
+            if (localMapDictionaryCount == 0)
+            {
+                drillStatus = 3;
+                ShutDownEffects();
+                return;
+            }
+
+            if (canDrill == false)
+            {
+                ShutDownEffects();
+                return;
+            }
+
+            if (!isPawnWorking && powerComp.PowerOn && flickComp.SwitchIsOn && refuelableComp.HasFuel && (drillStatus == 3 || drillStatus == 4))
             {
                 //FleckMaker.ThrowDustPuff(this.parent.DrawPos, this.parent.Map, Rand.Range(0.8f, 1.2f));
                 if (effecter == null)
@@ -481,7 +593,8 @@ namespace MapDrill
 
         public void RunDrill(int delta = 1, Pawn driller = null) //called by JobDriver_OperateMapDrill
         {
-            UpdateTargetDrillingCountRemaining();
+            if (!canDrill) { return; }
+            if (gizmoTargetResource.building.mineableThing != TargetDrillingDef) { return; }
 
             /*
             if (driller == null)
@@ -564,21 +677,22 @@ namespace MapDrill
             }
         }
         
-        private void TryProducePortion(float yieldPct, Pawn driller = null) 
+        private void TryProducePortion(float yieldPct, Pawn driller = null)
         {
+
+            if (gizmoTargetResource.building.mineableThing != TargetDrillingDef) { return; }
+            UpdateTargetDrillingCountRemaining();
+            Log.Message("updated from TryProducePortion");
+
             if (TargetDrillingCountRemaining == 0) 
             {
                 RemoveDeepResourceFromDictionary(TargetDrillingCell);
+                Log.Message("no resources at cell - TryProductPortion");
                 return;
             }
             int maxAmountInCell = Mathf.Min(TargetDrillingCountRemaining, TargetDrillingDef.deepCountPerPortion);
 
             parent.Map.deepResourceGrid.SetAt(TargetDrillingCell, TargetDrillingDef, TargetDrillingCountRemaining - maxAmountInCell);
-            if (TargetDrillingCountRemaining - maxAmountInCell == 0)
-            {
-                digOrDrill = 0;
-                digProgress = 0f;
-            }
 
             //UpdateTargetDrillingCountRemaining();
 
@@ -590,11 +704,11 @@ namespace MapDrill
             {
                 Find.HistoryEventsManager.RecordEvent(new HistoryEvent(HistoryEventDefOf.Mined, driller.Named(HistoryEventArgsNames.Doer)));
             }
-            if (TargetDrillingCountRemaining == 0) //if there are no underground node resources at this moment
+
+            if (TargetDrillingCountRemaining - maxAmountInCell == 0)
             {
-                //Log.Message($"Removing cell - {TargetDrillingCell} from dictionary - @@@@@@");
-                RemoveDeepResourceFromDictionary(TargetDrillingCell);
-                return;
+                digOrDrill = 0;
+                digProgress = 0f;
             }
         }
 
@@ -636,11 +750,14 @@ namespace MapDrill
                     list.Add(item);
                 }
                 Find.WindowStack.Add(new FloatMenu(list));
+
+                //CHANGETARGET
             };
             yield return command_Action;
 
 
             //WIP TESTING GIZMOS
+
             Command_Action command_ActionFindGizmo = new Command_Action();
             command_ActionFindGizmo.defaultLabel = "command_ActionFindGizmo".Translate(); // "Scan Map"
             command_ActionFindGizmo.defaultDesc = "command_ActionFindGizmoDesc".Translate(); // "Scan Map for existing underground resource nodes from a ground-penetrating scanner."
@@ -649,11 +766,10 @@ namespace MapDrill
             //command_ActionFindGizmo.iconOffset = mineableThing.uiIconOffset;
             command_ActionFindGizmo.action = delegate
             {
-                UpdateDeepResourceDictionary();
+                ScanCurrentMapForUndergroundResources();
                 SoundDefOf.Designate_Claim.PlayOneShot(new TargetInfo(parent.Position, parent.Map));//Tick_High wasn't bad
             };
             yield return command_ActionFindGizmo;
-
 
 
             Command_Action command_resetPipelineGizmo = new Command_Action();
@@ -663,6 +779,7 @@ namespace MapDrill
             command_resetPipelineGizmo.action = delegate
             {
                 lastCell = parent.Position;
+                canDrill = false;
                 distanceToCell = (int)Vector3.Distance(ConvertIntVec3ToVector3(parent.Position), ConvertIntVec3ToVector3(TargetDrillingCell));
                 distanceCellsDug = 0;
                 SoundDefOf.Designate_Claim.PlayOneShot(new TargetInfo(parent.Position, parent.Map));
@@ -677,6 +794,8 @@ namespace MapDrill
 
             if (DebugSettings.ShowDevGizmos)
             {
+
+
                 Command_Action command_ActionDEV = new Command_Action();
                 command_ActionDEV.defaultLabel = "DEV: Produce portion (100% yield)";
                 command_ActionDEV.action = delegate
@@ -705,6 +824,7 @@ namespace MapDrill
 
                 Command_Action command_ActionFindGizmo3 = new Command_Action();
                 command_ActionFindGizmo3.defaultLabel = "DisplayDeepResourceDictionary";
+                command_ActionFindGizmo3.icon = DebugShowVariablesIcon;
                 command_ActionFindGizmo3.action = delegate
                 {
                     DisplayDeepResourceDictionary();
@@ -729,7 +849,6 @@ namespace MapDrill
         {
             if (parent.Spawned)
             {
-                UpdateTargetDrillingCountRemaining();
                 //GetNextResource(out var resDef, out var countPresent, out targetCell);
 
                 if (drillStatus == 1 || drillStatus == 5)
