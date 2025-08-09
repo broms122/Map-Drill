@@ -57,6 +57,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Content Include="Backup_HarmonyPatch.txt" />
     <Content Include="Backup_JobDriver_OperateMapDrill.txt" />
     <Compile Include="Building_MapDrill.cs" />
     <Compile Include="Command_SetTargetFuelLevel_MapDrill.cs" />

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -22,31 +22,32 @@ namespace MapDrill
             {
             var codes = new List<CodeInstruction>(codeInstructions);
             var field = AccessTools.Field(typeof(ThingDef), "deepCountPerCell");
-            var mapInfo = AccessTools.Field(typeof(CompDeepScanner).GetNestedType("<>c__DisplayClass7_0", BindingFlags.NonPublic | BindingFlags.Instance), "map");
-            var generateOuterDictionary = AccessTools.Method(typeof(TargetMethod_Patch), "GenerateDictionary");
-
+            var generateOuterDictionary = AccessTools.Method(typeof(TargetMethod_Patch), "MyStaticFunction3");
 
             for (int i = 0; i < codes.Count; i++)
                 {
 
                     if (i>0 && codes[i-1].opcode == OpCodes.Ldloc_2 && codes[i].LoadsField(field)) //OpCodes.Stloc_2
-                    {
-                    yield return codes[i];
-                    yield return new CodeInstruction(OpCodes.Ldloc_2); // ThingDef;
-                    yield return new CodeInstruction(OpCodes.Ldloc_0); // Comp;
-                    yield return new CodeInstruction(OpCodes.Ldfld, mapInfo); // Map;
-                    yield return new CodeInstruction(OpCodes.Ldloc_S,6); // intvec3 for cell
-                    yield return new CodeInstruction(OpCodes.Call, generateOuterDictionary);
-                    }
+                {
 
-                else yield return codes[i];
+
+
+                    codes.Insert(i++, new CodeInstruction(OpCodes.Ldloc_2)); // ThingDef
+                    codes.Insert(i++, new CodeInstruction(OpCodes.Ldloc_0)); // Comp for Map
+                    codes.Insert(i++, new CodeInstruction(OpCodes.Ldloc_S,6)); // intvec3 for cell
+                    codes.Insert(i++, new CodeInstruction(OpCodes.Call, generateOuterDictionary));
+
+                    break; // Only insert once
+                    }
             }
+            return codes;
         }
 
-        public static void GenerateDictionary(ThingDef thingdef, Map map, IntVec3 intvec3)
+        public static void MyStaticFunction3(ThingDef thingdef, CompDeepScanner comp, IntVec3 intvec3)
         {
             //Map map = comp.parent.Map;
-            //CompDrill_MapDrill newComp = new CompDrill_MapDrill();
+            Map map = comp.parent.MapHeld;
+            CompDrill_MapDrill newComp = new CompDrill_MapDrill();
             //newComp.UpdateMapResourceDictionaries(thingdef, map, intvec3);
             CompDrill_MapDrill.UpdateMapResourceDictionaries(thingdef, map, intvec3);
 

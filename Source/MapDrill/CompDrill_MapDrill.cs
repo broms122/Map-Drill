@@ -70,6 +70,7 @@ namespace MapDrill
 
 
         public static Dictionary<Map, Dictionary<IntVec3, ThingDef>> OuterDictionaryMapIntVec3 = new Dictionary<Map, Dictionary<IntVec3, ThingDef>>();
+
         private Dictionary<IntVec3, ThingDef> InnerDictionaryIntVec3ThingDef = new Dictionary<IntVec3, ThingDef>();
         private Dictionary<IntVec3, int> InnerDictionaryIntVec3Int = new Dictionary<IntVec3, int>();
 
@@ -86,8 +87,6 @@ namespace MapDrill
         private CompPowerTrader powerComp;
         private CompRefuelable_MapDrill refuelableComp;
         private CompFlickable flickComp;
-
-        public CompProperties_Refuelable_MapDrill compRefuelableProps = MapDrillDef.GetCompProperties<CompProperties_Refuelable_MapDrill>(); //unused...
 
         private float portionProgress;
         private float portionYieldPct;
@@ -151,9 +150,9 @@ namespace MapDrill
             Scribe_Values.Look(ref TargetDrillingCountRemaining, "TargetDrillingCountRemaining");
             Scribe_Defs.Look(ref gizmoTargetResource, "gizmoTargetResource");
 
-            Scribe_Collections.Look(ref OuterDictionaryMapIntVec3, "OuterDictionaryMapIntVec3", LookMode.Value, LookMode.Deep);
-            Scribe_Collections.Look(ref InnerDictionaryIntVec3ThingDef, "InnerDictionaryIntVec3ThingDef", LookMode.Value, LookMode.Def);
-            Scribe_Collections.Look(ref InnerDictionaryIntVec3Int, "InnerDictionaryIntVec3Int", LookMode.Value, LookMode.Value);
+            Scribe_Collections.Look(ref OuterDictionaryMapIntVec3, "OuterDictionaryMapIntVec3",             LookMode.Reference, LookMode.Value);
+            Scribe_Collections.Look(ref InnerDictionaryIntVec3ThingDef, "InnerDictionaryIntVec3ThingDef",   LookMode.Value, LookMode.Def);
+            Scribe_Collections.Look(ref InnerDictionaryIntVec3Int, "InnerDictionaryIntVec3Int",             LookMode.Value, LookMode.Value);
 
             if (Scribe.mode == LoadSaveMode.PostLoadInit && gizmoTargetResource == null)
             {
@@ -265,14 +264,17 @@ namespace MapDrill
 
             //Log.Message("GIZMO - Dictonary Complete");
 
-
+            canDrill = false;
             //UpdateInstanceTargets();  commented out 8/7/25 .. this needs to be automated later
         }
 
         public static void UpdateMapResourceDictionaries(ThingDef thingdef, Map map, IntVec3 intvec3)
         {
-            Log.Message($"map = {map}");
+            //Log.Message($"map = {map}");
 
+            //Map map = comp.parent.Map;
+
+            Log.Message($"Map:\t{map}\t\tIntVec3\tx:\t{intvec3.x}\ty:\t{intvec3.y}\tz:\t{intvec3.z}\t\tThingDef:\t{thingdef}");
 
             if (!OuterDictionaryMapIntVec3.ContainsKey(map))
             {
@@ -280,7 +282,6 @@ namespace MapDrill
             }
 
             OuterDictionaryMapIntVec3[map].Add(intvec3, thingdef);
-            Log.Message($"Map:\t{map}\t\tIntVec3\tx:\t{intvec3.x}\ty:\t{intvec3.y}\tz:\t{intvec3.z}\t\tThingDef:\t{thingdef}");
         }
 
         private void CreateLocalDictionaries()
@@ -376,11 +377,17 @@ namespace MapDrill
         private void DisplayDeepResourceDictionary()
         {
             int i1 = 0;
-            int i2 = 1;
-            int i3 = 1;
+            int i2 = 0;
+            int i3 = 0;
             foreach (var item in OuterDictionaryMapIntVec3)
             {
                 Log.Message($"Outer {i1}:\t\tMap: {item.Key}\tDictionary: {item.Value}");
+                int i1_2 = 0;
+                foreach(var item2 in item.Value)
+                {
+                    Log.Message($"\t{i1}-{i1_2}:\t\tMap: {item2.Key}\tDictionary: {item2.Value}");
+                    i1_2++;
+                }
                 i1++;
             }
 
@@ -403,11 +410,11 @@ namespace MapDrill
             if (temp <= 0 || TargetDrillingCell == IntVec3.Zero)
             {
                 TargetDrillingCountRemaining = 0;
-                Log.Message("DEBUG UpdateTargetDrillCountRemaining");
+                //Log.Message("DEBUG UpdateTargetDrillCountRemaining");
             }
             else
             {
-                Log.Message("DEBUG UpdateTargetDrillCountRemaining2");
+                //Log.Message("DEBUG UpdateTargetDrillCountRemaining2");
                 TargetDrillingCountRemaining = temp;
             }
         }
@@ -447,7 +454,7 @@ namespace MapDrill
 
             if (!refuelableComp.HasFuel || !powerComp.PowerOn || !flickComp.SwitchIsOn) // could but won't run, shut it down
             {
-                Log.Message("DEBUG OPTION 1!! I added this 8/7/25 @ 5:08pm...");
+                //Log.Message("DEBUG OPTION 1!! I added this 8/7/25 @ 5:08pm...");
                 ShutDownDrill(); // results in offline (4) or standby (3) drillStatus
                 return canDrill = false;
             }
@@ -907,7 +914,7 @@ namespace MapDrill
         public static IntVec3 FindCellAtDistanceBetweenTwoCells(IntVec3 startCell, IntVec3 endCell, float targetDistance)
         {
             float m = (endCell.y - startCell.y) / (endCell.x - startCell.x);
-            IntVec3 result = new IntVec3();
+            //IntVec3 result = new IntVec3();
 
 
             if (m >= 0) // moving to right
